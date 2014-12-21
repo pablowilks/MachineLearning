@@ -1,0 +1,89 @@
+---
+title: "MachineLearningCourseProject"
+author: "Will Peebles"
+date: "Saturday, December 20, 2014"
+output: pdf_document
+---
+
+#Machine Learning Course Project
+
+##Introduction
+
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement – a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. In this project, your goal will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways. More information is available from the website here
+
+Download Two Datasets
+
+```{r, echo=TRUE}
+
+setwd("C:/Users/user/Desktop/Coursera/MachineLearning/Wk3")
+train <- read.csv("pml-training.csv")
+test <- read.csv("pml-testing.csv")
+dim(train)
+table(train$classe)
+```
+
+
+```{r, echo=TRUE}
+library(caret)
+set.seed(123456)
+trainset <- createDataPartition(train$classe, p = 0.8, list = FALSE)
+Training <- train[trainset, ]
+Validation <- train[-trainset, ]
+```
+
+Exclude near zero variances
+
+```{r, echo=TRUE}
+nzvcol <- nearZeroVar(Training)
+Training <- Training[, -nzvcol]
+```
+
+Exclude columns with 40% ore more missing values exclude descriptive
+
+
+```{r, echo=TRUE}
+
+cntlength <- sapply(Training, function(x) { sum(!(is.na(x) | x == ""))
+})
+nullcol <- names(cntlength[cntlength < 0.6 * length(Training$classe)])
+
+descriptcol <- c("X", "user_name", "raw_timestamp_part_1", "raw_timestamp_part_2",
+    "cvtd_timestamp", "new_window", "num_window")
+
+excludecols <- c(descriptcol, nullcol)
+
+Training <- Training[, !names(Training) %in% excludecols]
+
+```
+
+I use random forest to create a prediction function
+
+```{r, echo=TRUE}
+library(randomForest)
+
+rfModel <- randomForest(classe ~ ., data = Training, importance = TRUE, ntrees = 10)
+```
+
+First lets test the model against the training set
+
+```{r, echo=TRUE}
+ptraining <- predict(rfModel, Training)
+print(confusionMatrix(ptraining, Training$classe))
+```
+
+Now lets test against the testing set
+
+```{r, echo=TRUE}
+
+pvalidation <- predict(rfModel, Validation)
+
+print(confusionMatrix(pvalidation, Validation$classe))
+
+```
+
+
+```{r, echo=TRUE}
+
+ptest <- predict(rfModel, test)
+ptest
+```
